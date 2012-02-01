@@ -9,7 +9,7 @@ DataMapper.setup(:default,
 )
 
 class Post
-  include DataMapper:Resource
+  include DataMapper::Resource
  
   is :chef
  
@@ -21,7 +21,7 @@ class Post
 end
 
 class Comment
-  include DataMapper:Resource
+  include DataMapper::Resource
 
   is :chef
 
@@ -31,10 +31,10 @@ class Comment
   belongs_to :post
 end
 
-DataMapper.finalize!
+DataMapper.finalize
 
 post = Post.new(:title => "Datamapper is Awesome", :body => "Lorem ipsum ...", :published => true);
-comment = Comment.new(:created_by => "Me", :body => "I agree")
+comment1 = Comment.new(:created_by => "Me", :body => "I agree")
 post.comments << comment1
 post.save
 
