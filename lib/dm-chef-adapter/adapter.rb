@@ -2,7 +2,6 @@ require 'json'
 require 'chef'
 require 'dm-core'
 require 'uuidtools'
-require 'pry'
 module DataMapper
   class Property
     class DocId < String
@@ -19,6 +18,7 @@ module DataMapper
   module Is
     module Chef
       def is_chef(options={})
+        require 'dm-serializer'
         property :id, DataMapper::Property::DocId
       end
     end
