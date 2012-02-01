@@ -2,12 +2,24 @@ require 'json'
 require 'chef'
 require 'dm-core'
 require 'uuidtools'
-
+require 'pry'
 module DataMapper
+  class Property
+    class DocId < String
+      key true
+      writer false
+      default ''
+      # @api private
+      def to_child_key
+        Property::String
+      end
+
+    end # class DocId
+  end # module Property
   module Is
     module Chef
       def is_chef(options={})
-        property :id, String, :key => true, :default => ''
+        property :id, DataMapper::Property::DocId
       end
     end
   end
@@ -21,26 +33,46 @@ module DataMapper
             databag.name resource.class.storage_name
             databag.create
           end
-          
-          resource.id=@uuid.sha1_create(UUIDTools::UUID_DNS_NAMESPACE, ("%10.6f#{resource.class.storage_name}" % Time.now.to_f))
-          if resource.instance_variables.include? '@_key' 
-            resource.send :remove_instance_variable, :@_key
+          begin
+            resource.id = @uuid.sha1_create(
+              UUIDTools::UUID_DNS_NAMESPACE, 
+              ("%10.6f#{resource.class.storage_name}" % Time.now.to_f)
+            )
+          rescue
+            resource.send :instance_variable_set, :@id, resource.key
           end
-
-          if !Chef::DataBag.load(resource.class.storage_name).keys.include?(resource.key.join('-'))
+          if !Chef::DataBag.load(resource.class.storage_name).keys.include?(resource.key.join('_'))
             databag_item = Chef::DataBagItem.new
             databag_item.data_bag resource.class.storage_name
-            databag_item.raw_data = Chef::JSONCompat.from_json(resource.to_json)
+            data = {"id" => resource.key.join('_')}
+            data.merge! Chef::JSONCompat.from_json(resource.to_json)
+            databag_item.raw_data = data
+            #binding.pry
             databag_item.create
           else
-            raise "DataBagItem #{resource.class.storage_name}/#{resource.key.join('-')} already exists."
+            raise "DataBagItem #{resource.class.storage_name}/#{resource.key.join('_')} already exists."
           end
         end.count
       end
 
       # @api semipublic
       def read(query)
-        query.filter_records(records_for(query.model.storage_name))
+        records = records_for(query.model.storage_name)
+        ret = []
+        query.links.reverse.each do |link|
+          children = records_for(link.child_model.storage_name)
+          parents = records_for(link.parent_model.storage_name)
+          children.each do |child|
+            parents.each do |parent|
+              if child[link.child_key.first.name.to_s] == parent[link.parent_key.first.name.to_s]
+                records.each do |record|
+                  ret << child.merge(record)
+                end
+              end
+            end
+          end
+        end
+        query.filter_records(ret+records)
       end
 
       def update(attributes, collection)
