@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), "lib", "dm-chef-adapter", "version")  # For DM-CHEF-ADAPTER_VERSION
+require File.join(File.dirname(__FILE__), "lib", "dm-chef-adapter", "version")  # For DMCHEFADAPTER_VERSION
 
 Gem::Specification.new do |spec|
   files = []
@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
 
   rev = Time.now.strftime("%Y%m%d%H%M%S")
   spec.name = "dm-chef-adapter"
-  spec.version = LOGSTASH_VERSION
+  spec.version = DMCHEFADAPTER_VERSION
   spec.summary = "datamapper adapter to use a chef server as a datastore backend"
   spec.description = "uses chef databags as a backend for the datamapper ORM"
   spec.license = "Apache License (2.0)"
