@@ -3,16 +3,21 @@ branches:
     - master
 
 before_script:
+  - sudo rabbitmqctl add_vhost /chef
+  - sudo rabbitmqctl add_user chef testing
+  - sudo rabbitmqctl set_permissions -p /chef chef ".*" ".*" ".*"
   - echo "deb http://apt.opscode.com/ `lsb_release -cs`-0.10 main" | sudo tee /etc/apt/sources.list.d/opscode.list
   - sudo mkdir -p /etc/apt/trusted.gpg.d
   - sudo gpg --fetch-key http://apt.opscode.com/packages@opscode.com.gpg.key
   - sudo gpg --export packages@opscode.com | sudo tee /etc/apt/trusted.gpg.d/opscode-keyring.gpg > /dev/null
   - sudo apt-get update
-  - echo "chef chef/chef_server_url string http://localhost:4040" | sudo debconf-set-selections && sudo apt-get install chef
-  - sudo mkdir -p /etc/chef/
-  - echo " file_cache_path \"/tmp/chef-solo\"\ncookbook_path \"/tmp/chef-solo/cookbooks\"" | sudo tee /etc/chef/solo.rb
-  - curl "https://raw.github.com/gist/1724769/f9af238c0ca4950fbc6d0a154380a5625b280000/chef.json" | tee /tmp/chef.json
-  - sudo chef-solo -c /etc/chef/solo.rb -j /tmp/chef.json -r http://s3.amazonaws.com/chef-solo/bootstrap-latest.tar.gz
+  - sudo apt-get install libgecode-dev
+  - gem install chef-server chef-server-api chef-server chef-solr
+  - sudo mkdir -p /etc/chef
+  - curl "https://raw.github.com/gist/1724769/1e79401b4b42faa7d47dfd7e33e8f5543d201381/server.rb" | sudo tee /etc/chef/server.rb
+  - sudo nohup chef-solr-indexer &
+  - sudo nohup chef-solr &
+  - sudo nohup chef-server -N -e production &
 
 language: ruby
 rvm:
