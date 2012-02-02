@@ -9,7 +9,10 @@ before_script:
   - sudo gpg --export packages@opscode.com | sudo tee /etc/apt/trusted.gpg.d/opscode-keyring.gpg > /dev/null
   - sudo apt-get update
   - echo "chef chef/chef_server_url string http://localhost:4040" | sudo debconf-set-selections && sudo apt-get install chef
-  - echo "chef-solr chef-solr/amqp_pass string chef" | sudo debconf-set-selections && sudo apt-get install chef-server-api chef-expander
+  - sudo mkdir -p /etc/chef/
+  - echo " file_cache_path \"/tmp/chef-solo\"\ncookbook_path \"/tmp/chef-solo/cookbooks\"" | sudo tee /etc/chef/solo.rb
+  - echo "{\n  \"chef_server\": {\n    \"server_url\": \"http://localhost:4000\"\n  },\n  \"run_list\": [ \"recipe[chef-server::rubygems-install]\" ]\n}" | tee ~/chef.json
+  - sudo chef-solo -c /etc/chef/solo.rb -j ~/chef.json -r http://s3.amazonaws.com/chef-solo/bootstrap-latest.tar.gz
 
 language: ruby
 rvm:
