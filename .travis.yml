@@ -1,0 +1,18 @@
+branches:
+  only:
+    - master
+
+before_script:
+  - echo "deb http://apt.opscode.com/ `lsb_release -cs`-0.10 main" | sudo tee /etc/apt/sources.list.d/opscode.list
+  - sudo mkdir -p /etc/apt/trusted.gpg.d
+  - sudo gpg --fetch-key http://apt.opscode.com/packages@opscode.com.gpg.key
+  - sudo gpg --export packages@opscode.com | sudo tee /etc/apt/trusted.gpg.d/opscode-keyring.gpg > /dev/null
+  - sudo apt-get update
+  - sudo apt-get install chef chef-server-api chef-expander
+
+language: ruby
+rvm:
+  - 1.8.7
+  - 1.9.2
+  - jruby-18mode
+  - rbx-18mode
