@@ -9,7 +9,7 @@ before_script:
   - sudo gpg --export packages@opscode.com | sudo tee /etc/apt/trusted.gpg.d/opscode-keyring.gpg > /dev/null
   - sudo apt-get update
   - echo "chef chef/chef_server_url string http://localhost:4040" | sudo debconf-set-selections && sudo apt-get install chef
-  - sudo apt-get install chef-server-api chef-expander
+  - echo "chef-solr chef-solr/amqp_pass string chef" | sudo debconf-set-selections && sudo apt-get install chef-server-api chef-expander
 
 language: ruby
 rvm:
