@@ -6,9 +6,9 @@ describe DataMapper::Adapters::ChefAdapter do
   before do
     DataMapper.setup(:default,
       :adapter => 'chef',
-      :node_name => 'chef-webui',                       #this needs to also match a client client
-      :client_key => '/etc/chef/webui.pem',    #this key ,ust match the client from above
-      :chef_server_url => 'http://localhost:4000/' #url to the chef server api
+      :node_name => ENV['CHEF_NODE_NAME'],        #this needs to also match a client client
+      :client_key => ENV['CHEF_CLIENT_KEY'],      #this key must match the client from above
+      :chef_server_url => ENV['CHEF_SERVER_URL']  #url to the chef server api
     )
     class TestModel
       include DataMapper::Resource
