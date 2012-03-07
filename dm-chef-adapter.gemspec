@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "chef", "0.10.8"
   spec.add_dependency "dm-core", "1.2.0"
   spec.add_dependency "dm-serializer", "1.2.1"
+  spec.add_dependency "dalli"
 
   spec.files = files
   spec.require_paths << "lib"

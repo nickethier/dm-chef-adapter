@@ -2,6 +2,7 @@ require 'json'
 require 'chef'
 require 'dm-core'
 require 'uuidtools'
+
 module DataMapper
   class Property
     class DocId < String
@@ -47,8 +48,10 @@ module DataMapper
             data = {"id" => resource.key.join('_')}
             data.merge! Chef::JSONCompat.from_json(resource.to_json)
             databag_item.raw_data = data
-            #binding.pry
             databag_item.create
+            if !@cache.nil?
+              @cache.delete(resource.class.storage_name)
+            end
           else
             raise "DataBagItem #{resource.class.storage_name}/#{resource.key.join('_')} already exists."
           end
@@ -81,6 +84,9 @@ module DataMapper
           databag_item = Chef::DataBagItem.load collection.storage_name, doc["id"]
           databag_item.raw_data.merge! Chef::JSONCompat.from_json(fields.to_json)
           databag_item.save
+          if !@cache.nil?
+            @cache.delete(collection.storage_name)
+          end
         end
       end
 
@@ -89,6 +95,9 @@ module DataMapper
         read(collection.query).each do |doc|
           databag_item = Chef::DataBagItem.load collection.storage_name, doc["id"]
           databag_item.destroy collection.storage_name, doc["id"]
+          if !@cache.nil?
+            @cache.delete(collection.storage_name)
+          end
         end
       end
 
@@ -107,9 +116,14 @@ module DataMapper
       def initialize(name, opts = {})
         super
         Chef::Config.configuration[:node_name] = opts["node_name"]
-	Chef::Config.configuration[:client_key] = opts["client_key"]
-	Chef::Config.configuration[:chef_server_url] = opts["chef_server_url"] if !opts["chef_server_url"].nil?
-        @chef = Chef::REST.new(Chef::Config[:chef_server_url])
+	      Chef::Config.configuration[:client_key] = opts["client_key"]
+	      Chef::Config.configuration[:chef_server_url] = opts["chef_server_url"] if !opts["chef_server_url"].nil?
+        if opts["memcache"]
+          require 'dalli'
+          @cache = Dalli::Client.new(opts["memcache_url"])
+        else
+          @cache = nil
+        end
         @uuid = UUIDTools::UUID
       end
 
@@ -139,15 +153,19 @@ module DataMapper
       #
       # @api private
       def records_for(model)
-	records = []
-	databag = chef_databag(model)
-	if !databag.nil?
+        if !@cache.nil?
+            return @cache.get(model) if !@cache.get(model).nil?
+        end
+	      records = []
+	      databag = chef_databag(model)
+ 	      if !databag.nil?
           chef_databag(model).keys.each do |key|
             records << Chef::DataBagItem.load(model, key).raw_data
           end
         end
-        records
-      end
+        @cache.set(model, records, 60) if !@cache.nil?
+        return records
+       end
 
       # Writes all records to a databag
       #
