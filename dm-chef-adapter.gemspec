@@ -22,6 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "dm-core", "1.2.0"
   spec.add_dependency "dm-serializer", "1.2.1"
   spec.add_dependency "dalli"
+  spec.add_dependency "celluloid"
 
   spec.files = files
   spec.require_paths << "lib"

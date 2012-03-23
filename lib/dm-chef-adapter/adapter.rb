@@ -29,8 +29,8 @@ module DataMapper
       # @api semipublic
       def create(resources)
         resources.collect do |resource|
-          if !Chef::DataBag.list.keys.include?(resource.class.storage_name)
-	    databag = Chef::DataBag.new
+          unless ::Chef::DataBag.list.keys.include?(resource.class.storage_name)
+	          databag = ::Chef::DataBag.new
             databag.name resource.class.storage_name
             databag.create
           end
@@ -42,15 +42,15 @@ module DataMapper
           rescue
             resource.send :instance_variable_set, :@id, resource.key
           end
-          if !Chef::DataBag.load(resource.class.storage_name).keys.include?(resource.key.join('_'))
-            databag_item = Chef::DataBagItem.new
+          unless ::Chef::DataBag.load(resource.class.storage_name).keys.include?(resource.key.join('_'))
+            databag_item = ::Chef::DataBagItem.new
             databag_item.data_bag resource.class.storage_name
             data = {"id" => resource.key.join('_')}
-            data.merge! Chef::JSONCompat.from_json(resource.to_json)
+            data.merge! ::Chef::JSONCompat.from_json(resource.to_json)
             databag_item.raw_data = data
             databag_item.create
-            if !@cache.nil?
-              @cache.delete(resource.class.storage_name)
+            unless @cache.nil?
+              @cache.sync!(resource.class.storage_name)
             end
           else
             raise "DataBagItem #{resource.class.storage_name}/#{resource.key.join('_')} already exists."
@@ -81,11 +81,11 @@ module DataMapper
       def update(attributes, collection)
         fields = attributes_as_fields(attributes)
         read(collection.query).each do |doc|
-          databag_item = Chef::DataBagItem.load collection.storage_name, doc["id"]
-          databag_item.raw_data.merge! Chef::JSONCompat.from_json(fields.to_json)
+          databag_item = ::Chef::DataBagItem.load collection.storage_name, doc["id"]
+          databag_item.raw_data.merge! ::Chef::JSONCompat.from_json(fields.to_json)
           databag_item.save
-          if !@cache.nil?
-            @cache.delete(collection.storage_name)
+          unless @cache.nil?
+            @cache.sync!(collection.storage_name)
           end
         end
       end
@@ -93,10 +93,10 @@ module DataMapper
       # @api semipublic
       def delete(collection)
         read(collection.query).each do |doc|
-          databag_item = Chef::DataBagItem.load collection.storage_name, doc["id"]
+          databag_item = ::Chef::DataBagItem.load collection.storage_name, doc["id"]
           databag_item.destroy collection.storage_name, doc["id"]
-          if !@cache.nil?
-            @cache.delete(collection.storage_name)
+          unless @cache.nil?
+            @cache.sync!(collection.storage_name)
           end
         end
       end
@@ -115,12 +115,12 @@ module DataMapper
       # @api semipublic
       def initialize(name, opts = {})
         super
-        Chef::Config.configuration[:node_name] = opts["node_name"]
-	      Chef::Config.configuration[:client_key] = opts["client_key"]
-	      Chef::Config.configuration[:chef_server_url] = opts["chef_server_url"] if !opts["chef_server_url"].nil?
+        ::Chef::Config.configuration[:node_name] = opts["node_name"]
+	      ::Chef::Config.configuration[:client_key] = opts["client_key"]
+	      ::Chef::Config.configuration[:chef_server_url] = opts["chef_server_url"] if !opts["chef_server_url"].nil?
         if opts["memcache"]
-          require 'dalli'
-          @cache = Dalli::Client.new(opts["memcache_url"])
+          require 'dm-chef-adapter/cache'
+          @cache = DataMapper::Chef::Cache.new(opts["memcache_url"])
         else
           @cache = nil
         end
@@ -153,17 +153,18 @@ module DataMapper
       #
       # @api private
       def records_for(model)
-        if !@cache.nil?
-            return @cache.get(model) if !@cache.get(model).nil?
+        unless @cache.nil?
+            return @cache.get(model) unless @cache.get(model).nil?
+            @cache.sync(model)
+            return @cache.get model
         end
 	      records = []
 	      databag = chef_databag(model)
- 	      if !databag.nil?
-          chef_databag(model).keys.each do |key|
+ 	      unless databag.nil?
+          databag.keys.each do |key|
             records << Chef::DataBagItem.load(model, key).raw_data
           end
         end
-        @cache.set(model, records, 60) if !@cache.nil?
         return records
        end
 
@@ -177,7 +178,7 @@ module DataMapper
       #
       # @api private
       def write_records(model, records)
-        item = Chef::DataBagItem.load(model. records["id"])
+        item = ::Chef::DataBagItem.load(model. records["id"])
         item.from_hash records
         item.save
       end
@@ -193,7 +194,7 @@ module DataMapper
       # @api private
       def chef_databag(model)
         begin
-          Chef::DataBag.load model
+          ::Chef::DataBag.load model
         rescue
           nil
         end
